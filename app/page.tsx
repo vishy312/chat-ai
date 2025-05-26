@@ -1,3 +1,5 @@
+"use client";
+
 import { AppSidebar } from "@/components/app-sidebar";
 import MessagePanel from "@/components/message-panel";
 import { Button } from "@/components/ui/button";
@@ -7,10 +9,35 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Textarea } from "@/components/ui/textarea";
+import { Message } from "@/models/message";
+import { useMessageStore } from "@/store/store";
 import { Separator } from "@radix-ui/react-separator";
 import { ChevronUp } from "lucide-react";
+import { useState } from "react";
 
 export default function Home() {
+  const messageList = useMessageStore((state) => state.messages);
+  const addMessage = useMessageStore((state) => state.addMessage);
+
+  const [query, setQuery] = useState<string>("");
+  const handleOnChange = (q: string) => {
+    setQuery(q);
+  };
+
+  const handleOnSend = () => {
+    console.log(query);
+    const queryMessage: Message = {
+      content: query,
+      id: 0,
+      role: "user",
+      timestamp: new Date(),
+    };
+
+    addMessage(queryMessage);
+
+    setQuery("");
+  };
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -20,13 +47,18 @@ export default function Home() {
           <Separator orientation="vertical" className="mr-2 h-4" />
         </header>
         <div className="flex flex-col justify-end w-full p-6 gap-6">
-          <MessagePanel className="w-4/5 mx-auto flex flex-col gap-3 overflow-scroll no-scrollbar" />
+          <MessagePanel
+            className="w-4/5 mx-auto flex flex-col gap-3 overflow-scroll no-scrollbar"
+            messages={messageList}
+          />
           <div className="input-box flex items-center gap-4 justify-center">
             <Textarea
               className="w-3/5 max-h-40 break-words resize-none !text-lg no-scrollbar"
               placeholder="Ask anything..."
+              value={query}
+              onChange={(event) => handleOnChange(event.target.value)}
             />
-            <Button className="">
+            <Button className="" onClick={handleOnSend}>
               <ChevronUp />
             </Button>
           </div>

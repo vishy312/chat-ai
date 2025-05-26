@@ -4,8 +4,7 @@ export const mockMessages: Message[] = [
   {
     id: 1,
     role: "user",
-    content:
-      "Hey there! Can you help me understand quantum computing?aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    content: "Hey there! Can you help me understand quantum computing?",
     timestamp: new Date("2025-05-21T10:00:00Z"),
   },
   {
