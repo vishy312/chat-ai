@@ -57,6 +57,12 @@ export default function Home() {
               placeholder="Ask anything..."
               value={query}
               onChange={(event) => handleOnChange(event.target.value)}
+              onKeyUp={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.stopPropagation();
+                  handleOnSend();
+                }
+              }}
             />
             <Button className="" onClick={handleOnSend}>
               <ChevronUp />
