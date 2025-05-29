@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Message } from "@/models/message";
 import { useMessageStore } from "@/store/store";
 import { Separator } from "@radix-ui/react-separator";
+import axios from "axios";
 import { ChevronUp } from "lucide-react";
 import { useState } from "react";
 
@@ -20,12 +21,13 @@ export default function Home() {
   const addMessage = useMessageStore((state) => state.addMessage);
 
   const [query, setQuery] = useState<string>("");
+
+  const [loading, setLoading] = useState<boolean>(false);
   const handleOnChange = (q: string) => {
     setQuery(q);
   };
 
-  const handleOnSend = () => {
-    console.log(query);
+  const handleOnSend = async () => {
     const queryMessage: Message = {
       content: query,
       id: 0,
@@ -36,6 +38,20 @@ export default function Home() {
     addMessage(queryMessage);
 
     setQuery("");
+
+    setLoading(true);
+    axios
+      .post("http://localhost:3000/api/message", {
+        message: queryMessage,
+      })
+      .then((response) => {
+        setLoading(false);
+
+        addMessage({
+          ...response.data,
+          timestamp: new Date(),
+        });
+      });
   };
 
   return (
@@ -51,6 +67,11 @@ export default function Home() {
             className="w-4/5 mx-auto flex flex-col gap-3 overflow-scroll no-scrollbar"
             messages={messageList}
           />
+          {loading && (
+            <div className="text-blue-700 w-4/5 mx-auto text-xl font-bold">
+              Thinking...
+            </div>
+          )}
           <div className="input-box flex items-center gap-4 justify-center">
             <Textarea
               className="w-3/5 max-h-40 break-words resize-none !text-lg no-scrollbar"
