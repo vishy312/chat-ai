@@ -1,0 +1,30 @@
+services:
+  postgres:
+    container_name: container_pg
+    image: postgres
+    hostname: localhost
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: chatui
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  pgadmin:
+    container_name: container_pgadmin
+    image: elestio/pgadmin
+    depends_on:
+      - postgres
+    ports:
+      - 5050:5050
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@email.com
+      PGADMIN_DEFAULT_PASSWORD: 1234
+      PGADMIN_LISTEN_PORT: 5050
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
