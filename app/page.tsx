@@ -68,8 +68,8 @@ export default function Home() {
             messages={messageList}
           />
           {loading && (
-            <div className="text-blue-700 w-4/5 mx-auto text-xl font-bold">
-              Thinking...
+            <div className="w-4/5 mx-auto border break-words bg-gray-700 px-4 py-4 rounded-lg text-gray-200 flex flex-col">
+              Thinking ...
             </div>
           )}
           <div className="input-box flex items-center gap-4 justify-center">
