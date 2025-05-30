@@ -1,4 +1,5 @@
 import { client } from "@/prisma/client";
+import { getAIResponse } from "@/lib/ai-interface";
 
 export async function POST(req: Request) {
   const { content } = await req.json();
@@ -7,14 +8,21 @@ export async function POST(req: Request) {
     throw new Error("undefined role or content");
   }
 
-  const createdMessages = await client.messages.createMany({
-    data: [
-      { content, role: "user" },
-      { content, role: "assistant" },
-    ],
-  });
+  const response = await getAIResponse(content);
 
-  if (!createdMessages) throw new Error("Something went wrong");
+  if (response) {
+    const parsedResponse = JSON.parse(response);
+
+    const createdMessages = await client.messages.createMany({
+      data: [
+        { content, role: "user" },
+        { content: parsedResponse?.content, role: "assistant" },
+      ],
+    });
+    if (!createdMessages) throw new Error("Something went wrong");
+  } else {
+    throw new Error("Invalid AI Response");
+  }
 
   const messages = await client.messages.findMany();
 
