@@ -1,6 +1,4 @@
 import { Message } from "@/models/message";
-// import { messages } from "@/models/mock-messages";
-// import { Role } from "../models/message";
 import React from "react";
 
 interface Props {
@@ -27,7 +25,7 @@ function MessagePanel({ className, messages }: Props) {
           >
             {message.content}
             <span className="self-end w-fit text-xs text-gray-300">
-              {intlDateObj.format(message.timestamp)}
+              {intlDateObj.format(new Date(message.timestamp))}
             </span>
           </div>
         );

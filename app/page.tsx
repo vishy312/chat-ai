@@ -14,13 +14,27 @@ import { useMessageStore } from "@/store/store";
 import { Separator } from "@radix-ui/react-separator";
 import axios from "axios";
 import { ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Home() {
   const messageList = useMessageStore((state) => state.messages);
   const addMessage = useMessageStore((state) => state.addMessage);
+  const setMessages = useMessageStore((state) => state.setMessages);
 
   const [query, setQuery] = useState<string>("");
+
+  const getMessages = async () => {
+    try {
+      const response = await axios.get("http://localhost:3000/api/message");
+      setMessages(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    getMessages();
+  }, []);
 
   const [loading, setLoading] = useState<boolean>(false);
   const handleOnChange = (q: string) => {
@@ -42,15 +56,12 @@ export default function Home() {
     setLoading(true);
     axios
       .post("http://localhost:3000/api/message", {
-        message: queryMessage,
+        content: queryMessage.content,
       })
       .then((response) => {
         setLoading(false);
 
-        addMessage({
-          ...response.data,
-          timestamp: new Date(),
-        });
+        setMessages(response.data);
       });
   };
 
