@@ -1,5 +1,7 @@
 import { Message } from "@/models/message";
 import React from "react";
+import Markdown from "react-markdown";
+import remarkGFM from "remark-gfm";
 
 interface Props {
   className: string;
@@ -23,7 +25,7 @@ function MessagePanel({ className, messages }: Props) {
                 : "w-full border break-words bg-gray-700 px-4 py-2 rounded-lg text-white flex flex-col"
             }
           >
-            {message.content}
+            {<Markdown remarkPlugins={[remarkGFM]}>{message.content}</Markdown>}
             <span className="self-end w-fit text-xs text-gray-300">
               {intlDateObj.format(new Date(message.timestamp))}
             </span>
