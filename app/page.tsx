@@ -13,8 +13,8 @@ import { Message } from "@/models/message";
 import { useMessageStore } from "@/store/store";
 import { Separator } from "@radix-ui/react-separator";
 import axios from "axios";
-import { ChevronUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronUp, PlusCircleIcon } from "lucide-react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 
 export default function Home() {
   const messageList = useMessageStore((state) => state.messages);
@@ -22,6 +22,7 @@ export default function Home() {
   const setMessages = useMessageStore((state) => state.setMessages);
 
   const [query, setQuery] = useState<string>("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const getMessages = async () => {
     try {
@@ -53,16 +54,33 @@ export default function Home() {
 
     setQuery("");
 
+    const formData = new FormData();
+    formData.append("content", queryMessage.content);
+
+    if (selectedFile) {
+      formData.append("file", selectedFile);
+    }
+
     setLoading(true);
+
     axios
-      .post("http://localhost:3000/api/message", {
-        content: queryMessage.content,
-      })
+      .post("http://localhost:3000/api/message", formData)
       .then((response) => {
         setLoading(false);
 
         setMessages(response.data);
       });
+  };
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const handleFileUpload = () => {
+    fileRef.current!.click();
+  };
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files != null) {
+      setSelectedFile(event.target.files[0]);
+    }
   };
 
   return (
@@ -84,6 +102,17 @@ export default function Home() {
             </div>
           )}
           <div className="input-box flex items-center gap-4 justify-center">
+            <PlusCircleIcon
+              className="cursor-pointer"
+              onClick={handleFileUpload}
+            />
+            <input
+              type="file"
+              style={{ display: "none" }}
+              ref={fileRef}
+              onChange={handleFileChange}
+              accept=".pdf"
+            />
             <Textarea
               className="w-3/5 max-h-40 break-words resize-none !text-lg no-scrollbar"
               placeholder="Ask anything..."
@@ -96,7 +125,7 @@ export default function Home() {
                 }
               }}
             />
-            <Button className="" onClick={handleOnSend}>
+            <Button className="cursor-pointer" onClick={handleOnSend}>
               <ChevronUp />
             </Button>
           </div>

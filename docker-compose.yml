@@ -26,5 +26,10 @@ services:
       PGADMIN_LISTEN_PORT: 5050
     restart: unless-stopped
 
+  qdrant:
+    image: qdrant/qdrant:dev
+    ports:
+    - 6333:6333
+
 volumes:
   postgres-data:
