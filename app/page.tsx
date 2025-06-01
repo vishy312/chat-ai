@@ -66,9 +66,12 @@ export default function Home() {
     axios
       .post("http://localhost:3000/api/message", formData)
       .then((response) => {
-        setLoading(false);
-
         setMessages(response.data);
+      })
+      .finally(() => {
+        setLoading(false);
+        formData.delete("file");
+        setSelectedFile(null);
       });
   };
 
@@ -101,6 +104,11 @@ export default function Home() {
               Thinking ...
             </div>
           )}
+          {selectedFile && (
+            <small className="w-3/5 mx-auto text-blue-700">
+              {selectedFile.name}
+            </small>
+          )}
           <div className="input-box flex items-center gap-4 justify-center">
             <PlusCircleIcon
               className="cursor-pointer"
@@ -112,6 +120,7 @@ export default function Home() {
               ref={fileRef}
               onChange={handleFileChange}
               accept=".pdf"
+              max={1}
             />
             <Textarea
               className="w-3/5 max-h-40 break-words resize-none !text-lg no-scrollbar"

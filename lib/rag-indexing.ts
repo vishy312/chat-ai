@@ -4,6 +4,20 @@ import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { TaskType } from "@google/generative-ai";
 import { QdrantVectorStore } from "@langchain/qdrant";
 
+const embeddings: GoogleGenerativeAIEmbeddings =
+  new GoogleGenerativeAIEmbeddings({
+    model: "text-embedding-004",
+    taskType: TaskType.RETRIEVAL_DOCUMENT,
+    apiKey: `${process.env.GEMINI_API_KEY}`,
+  });
+
+const ragStore: QdrantVectorStore = new QdrantVectorStore(embeddings, {
+  apiKey: `${process.env.GEMINI_API_KEY}`,
+  url: "http://localhost:6333",
+  collectionName: "chat-1",
+});
+const SCORE_THRESHOLD: number = 0.75;
+
 export const indexingPipeline = async (file: File) => {
   //Loads Pdf
   const loader = new PDFLoader(file);
@@ -18,18 +32,29 @@ export const indexingPipeline = async (file: File) => {
   const chunks = await splitter.splitDocuments(docs);
 
   // Vector Embeddings
-  const embeddings = new GoogleGenerativeAIEmbeddings({
-    model: "text-embedding-004",
-    taskType: TaskType.RETRIEVAL_DOCUMENT,
-    apiKey: `${process.env.GEMINI_API_KEY}`,
-  });
 
   // Vector Store
-  const store = QdrantVectorStore.fromDocuments(chunks, embeddings, {
-    apiKey: `${process.env.GEMINI_API_KEY}`,
-    url: "http://localhost:6333",
-    collectionName: "chat-1",
-  });
+  const store = ragStore;
+  await store.addDocuments(chunks, {});
+  //   ragStore = QdrantVectorStore.fromDocuments(chunks, embeddings, {
+  //     apiKey: `${process.env.GEMINI_API_KEY}`,
+  //     url: "http://localhost:6333",
+  //     collectionName: "chat-1",
+  //   });
 
-  return store;
+  return ragStore;
+};
+
+export const similaritySearch = async (query: string, k: number = 3) => {
+  const store = ragStore;
+  const queryVector = await embeddings.embedQuery(query);
+  const relevantChunks = await store.similaritySearchVectorWithScore(
+    queryVector,
+    k
+  );
+  if (relevantChunks[0]?.[1] > SCORE_THRESHOLD) {
+    return relevantChunks.slice(0, 3);
+  }
+
+  return [];
 };
