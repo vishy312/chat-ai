@@ -8,7 +8,7 @@ import { getAIResponse } from "@/lib/ai-interface";
 export async function POST(req: Request) {
   const formData = await req.formData();
   const document = formData.get("file");
-  const content = formData.get("content");
+  const content = formData.get("content") as string;
 
   if (!content) {
     throw new Error("undefined content");
@@ -20,7 +20,6 @@ export async function POST(req: Request) {
   if (document) {
     console.log(document);
 
-    console.log("document vala get called");
     await indexingPipeline(document as File);
     cookieStore.set("document-uploaded", "Y", {
       path: "/",
@@ -28,56 +27,86 @@ export async function POST(req: Request) {
     });
     const data = await similaritySearch(content as string, 3);
     const chunks = data.map((chunk) => {
-      return chunk[0];
+      return chunk[0].pageContent;
     });
+
     response = await getAIResponse(content, promptWithChunks(chunks));
   } else {
     const cookie = cookieStore.get("document-uploaded");
     if (cookie?.value === "Y") {
-      console.log("simple-chunk vala get called");
       const data = await similaritySearch(content as string, 3);
       if (data.length === 0) {
-        console.log("simple vala get called");
         response = await getAIResponse(content, simplePrompt);
       } else {
-        console.log("chunk vala get called");
         const chunks = data.map((chunk) => {
-          return chunk[0];
+          return chunk[0].pageContent;
         });
         response = await getAIResponse(content, promptWithChunks(chunks));
       }
     } else {
-      console.log("simple vala get called");
       response = await getAIResponse(content, simplePrompt);
     }
   }
 
-  if (response) {
-    const parsedResponse = JSON.parse(response);
+  // response = await getAIResponse(content, simplePrompt);
+  let fullResponse = "";
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      try {
+        for await (const chunk of response) {
+          const token = chunk.choices[0]?.delta?.content;
+          if (token) {
+            fullResponse += token;
+            controller.enqueue(encoder.encode(`data: ${token}\n\n`));
+          }
+        }
 
-    console.log(parsedResponse);
+        const match = fullResponse.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (match) {
+          fullResponse = JSON.parse(match[1]).content;
+        }
+        const createdMessages = await client.messages.createMany({
+          data: [
+            { content, role: "user" },
+            { content: fullResponse, role: "assistant" },
+          ],
+        });
+        if (!createdMessages) throw new Error("Something went wrong");
 
-    const createdMessages = await client.messages.createMany({
-      data: [
-        { content, role: "user" },
-        { content: parsedResponse?.content, role: "assistant" },
-      ],
-    });
-    if (!createdMessages) throw new Error("Something went wrong");
-  } else {
-    throw new Error("Invalid AI Response");
-  }
+        const messages = await client.messages.findMany();
 
-  const messages = await client.messages.findMany();
+        if (!messages) {
+          throw new Error("Something went wrong");
+        }
 
-  return Response.json(messages);
+        controller.enqueue(
+          encoder.encode(
+            `event: allMessages\ndata: ${JSON.stringify(messages || [])}\n\n`
+          )
+        );
+        controller.close();
+      } catch (error) {
+        controller.enqueue(encoder.encode(`event: error\ndata: ${error}\n\n`));
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }
 
 export async function GET() {
   const messages = await client.messages.findMany();
 
   if (!messages) {
-    throw new Error("Something wwent wrong");
+    throw new Error("Something went wrong");
   }
 
   return Response.json(messages);

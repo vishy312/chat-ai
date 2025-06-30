@@ -21,6 +21,17 @@ export default function Home() {
   const addMessage = useMessageStore((state) => state.addMessage);
   const setMessages = useMessageStore((state) => state.setMessages);
 
+  const [messageStream, setMessageStream] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, []);
+
   const [query, setQuery] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -43,6 +54,7 @@ export default function Home() {
   };
 
   const handleOnSend = async () => {
+    if (query === "") return;
     const queryMessage: Message = {
       content: query,
       id: 0,
@@ -55,7 +67,7 @@ export default function Home() {
     setQuery("");
 
     const formData = new FormData();
-    formData.append("content", queryMessage.content);
+    formData.append("content", query);
 
     if (selectedFile) {
       formData.append("file", selectedFile);
@@ -63,16 +75,63 @@ export default function Home() {
 
     setLoading(true);
 
-    axios
-      .post("http://localhost:3000/api/message", formData)
-      .then((response) => {
-        setMessages(response.data);
-      })
-      .finally(() => {
-        setLoading(false);
-        formData.delete("file");
-        setSelectedFile(null);
-      });
+    const res = await fetch("http://localhost:3000/api/message", {
+      body: formData,
+      method: "POST",
+    });
+
+    if (!res.body) {
+      console.error("Response body is null");
+      return;
+    }
+
+    const reader = res?.body?.getReader();
+    const decoder = new TextDecoder();
+    if (!decoder) return;
+
+    let buffer = "";
+
+    setStreaming(true);
+    while (true) {
+      const { value, done } = await reader?.read();
+      if (done) {
+        setStreaming(false);
+        break;
+      }
+
+      buffer += decoder.decode(value);
+      const lines = buffer.split("\n\n");
+      buffer = lines?.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("event: allMessages")) {
+          const allMessages = JSON.parse(line.split("data: ")[1] || "");
+          setMessages(allMessages);
+          // console.log("📦 allMessages:", allMessages);
+        } else if (line.startsWith("data: ")) {
+          const token = line.replace("data: ", "");
+
+          // send this token to MessagePanel component
+          setMessageStream(token);
+        } else {
+        }
+      }
+    }
+
+    setLoading(false);
+
+    // axios
+    //   .post("http://localhost:3000/api/message", formData, {
+    //     responseType: "stream",
+    //   })
+    //   .then((response) => {
+    //     setMessages(response.data);
+    //   })
+    //   .finally(() => {
+    //     setLoading(false);
+    //     formData.delete("file");
+    //     setSelectedFile(null);
+    //   });
   };
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -89,15 +148,18 @@ export default function Home() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="h-screen no-scrollbar">
+      {/* <div className="h-screen bg-red "> */}
+      <SidebarInset className="h-screen flex flex-col scroll-smooth">
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
         </header>
-        <div className="flex flex-col justify-end w-full p-6 gap-6">
+        <div className="flex flex-col justify-end w-full h-[calc(100vh-4rem)] p-6 gap-6">
           <MessagePanel
-            className="w-4/5 mx-auto flex flex-col gap-3 overflow-scroll no-scrollbar"
+            className="w-4/5 mx-auto flex flex-col gap-3 overflow-y-scroll no-scrollbar scroll-smooth"
             messages={messageList}
+            messageStream={messageStream}
+            streaming={streaming}
           />
           {loading && (
             <div className="w-4/5 mx-auto border break-words bg-gray-700 px-4 py-4 rounded-lg text-gray-200 flex flex-col">
@@ -109,7 +171,10 @@ export default function Home() {
               {selectedFile.name}
             </small>
           )}
-          <div className="input-box flex items-center gap-4 justify-center">
+          <div
+            ref={bottomRef}
+            className="input-box flex items-center gap-4 justify-center"
+          >
             <PlusCircleIcon
               className="cursor-pointer"
               onClick={handleFileUpload}
@@ -130,6 +195,8 @@ export default function Home() {
               onKeyUp={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.stopPropagation();
+                  const inputQuery = event.currentTarget.value.trim();
+                  if (inputQuery === "") return;
                   handleOnSend();
                 }
               }}
@@ -140,6 +207,7 @@ export default function Home() {
           </div>
         </div>
       </SidebarInset>
+      {/* </div> */}
     </SidebarProvider>
   );
 }

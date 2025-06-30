@@ -6,9 +6,16 @@ import remarkGFM from "remark-gfm";
 interface Props {
   className: string;
   messages: Message[];
+  streaming: boolean;
+  messageStream: string;
 }
 
-function MessagePanel({ className, messages }: Props) {
+function MessagePanel({
+  className,
+  messages,
+  streaming,
+  messageStream,
+}: Props) {
   const intlDateObj = new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
   });
@@ -21,8 +28,8 @@ function MessagePanel({ className, messages }: Props) {
             key={index}
             className={
               message.role === "user"
-                ? "max-w-3/5 border ml-auto break-words bg-gray-700 px-4 py-2 rounded-lg text-white flex flex-col"
-                : "w-full border break-words bg-gray-700 px-4 py-2 rounded-lg text-white flex flex-col"
+                ? "max-w-3/5 border ml-auto break-words bg-gray-900 px-4 py-2 rounded-lg text-white flex flex-col"
+                : "max-w-full border break-words bg-gray-700 px-4 py-2 rounded-lg text-white flex flex-col"
             }
           >
             {<Markdown remarkPlugins={[remarkGFM]}>{message.content}</Markdown>}
@@ -32,6 +39,16 @@ function MessagePanel({ className, messages }: Props) {
           </div>
         );
       })}
+
+      {streaming && (
+        <div
+          className={
+            "w-full border break-words bg-gray-700 px-4 py-2 rounded-lg text-white flex flex-col"
+          }
+        >
+          {<Markdown remarkPlugins={[remarkGFM]}>{messageStream}</Markdown>}
+        </div>
+      )}
     </div>
   );
 }
